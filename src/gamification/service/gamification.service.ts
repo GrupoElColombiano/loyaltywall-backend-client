@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Event } from 'src/common/entity/event.entity';
 import { Site } from 'src/common/entity/site.entity';
@@ -70,6 +70,7 @@ export class GamificationService {
     type: number,
   ) {
     console.log('🚀 ~ GamificationService ~ userId:', userId);
+
     // const pointValue = await this.pointsValueRepo.find();
     const offset = (page - 1) * pageSize;
     let queryBuilder;
@@ -106,7 +107,12 @@ export class GamificationService {
         pageSize,
       ]);
 
+
       console.log('🔥 == result == 🔥', JSON.stringify(result));
+
+      return result;
+
+     
     } else if (type == 1) {
       queryBuilder = this.entityManager
         .createQueryBuilder()

@@ -109,10 +109,11 @@ export class PaymentController {
   }
 
   //Metodo para obtener el historial de transacciones de productos de la tabla de suscripciones y filtrar por id_site
-  @Get('subscriptions/site/:idSite')
-  async getSubscriptionsBySite(@Param('idSite') idSite: number) {
+  @Get('subscriptions/site/:idSite/:userId')
+  async getSubscriptionsBySite(@Param('idSite') idSite: number, @Param('userId') userId: string) {
     const result = await this.paymentService.getMarketplaceProductsHistory(
       idSite,
+      userId
     );
     return result;
   }

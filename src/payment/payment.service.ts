@@ -699,7 +699,7 @@ export class PaymentService {
   }
 
   //Metodo para obtener el historial de transacciones de productos de la tabla de suscripciones y filtrar por id_site
-  async getMarketplaceProductsHistory(id_site: number) {
+  async getMarketplaceProductsHistory(id_site: number, userId?: string) {
     try {
       const subscriptions: any = await this.subscriptionRepository
         .createQueryBuilder('subscription')
@@ -715,6 +715,8 @@ export class PaymentService {
         )
         .getMany();
 
+        console.log(subscriptions, "THE SUBSCRIPTIONS HERE 👽👽👽");
+
       //Retornar sólo las transacciones que tengan productos o que tengan el campo subscription.id_plan en null, porque si está en null es una transacción de productos. Retornar s´lo el campo marketplaceProducts
       const filteredSubscriptions = subscriptions
         .filter(
@@ -726,6 +728,18 @@ export class PaymentService {
 
       //Se retorna de la froma [[{product1}, {product2}], [{product1}, {product2}]] y lo necesito [{product1}, {product2}, {product1}, {product2}]
       const flatMarketplaceProducts = filteredSubscriptions.flat();
+
+      const responseFavorites = await axios.request({
+        method: 'get',
+        url: `${process.env.MARKET_PLACE_URL}/products/favorites`,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          User_id: userId || "",
+        },
+      })
+      console.log("👨‍🚒👨‍🚒👨‍🚒👨‍🚒 ~ PaymentService ~ getMarketplaceProductsHistory ~ responseFavorites:", JSON.stringify(responseFavorites?.data, null, 2));
+
 
       const products = flatMarketplaceProducts.map((product) => {
         const {
@@ -751,7 +765,23 @@ export class PaymentService {
         };
       });
 
-      return products;
+     
+      const productMap = new Map();
+
+      products.forEach(product => {
+       
+        const isFavorite = responseFavorites?.data?.items.some(favProduct => favProduct.id === product.id);
+      
+        productMap.set(product.id, {
+          ...product,
+          isInFavorite: isFavorite ? true : product.isInFavorite
+        });
+      });
+      
+      const uniqueProducts = Array.from(productMap.values());
+
+      return uniqueProducts;
+
     } catch (error) {
       console.error(error);
       throw error;
