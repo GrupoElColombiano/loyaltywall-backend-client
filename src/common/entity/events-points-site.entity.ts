@@ -5,6 +5,7 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  JoinColumn
 } from 'typeorm';
 import { PointsEvents } from './points-events.entity';
 
@@ -16,15 +17,16 @@ export class EventsPointsSite {
   //@JoinColumn({ name: 'eventIdEvent' })
   //event: Events;
   @ManyToOne(() => PointsEvents, { eager: true })
+  @JoinColumn({ name: 'eventIdEvent' })
   pointsEvents: PointsEvents;
-  @Column()
-  eventIdEvent: number;
+  // @Column()
+  // eventIdEvent: number;
   @Column() // Cambiado a Column
   siteIdSite: number;
   @Column() // Cambiado a Column
   points: number;
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  registration_state: Date;
+  registration_date: Date;
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   expiration_date: Date;
 }
