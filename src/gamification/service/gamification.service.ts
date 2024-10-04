@@ -101,16 +101,28 @@ export class GamificationService {
         LIMIT $3
       `;
 
+      // const countQuery = `
+      //   SELECT COUNT(*) AS total
+      //   FROM (${combinedQuery}) AS subquery
+      // `;
+
+      // // Ejecutar la consulta para contar los registros
+      // const totalRecordsResult = await this.entityManager.query(countQuery, [
+      //   userId,
+      // ]);
+      // console.log("🚀 ~ GamificationService ~ totalRecordsResult:", totalRecordsResult)
+
       result = await this.entityManager.query(combinedQuery, [
         userId,
         offset,
         pageSize,
+        
       ]);
 
 
       console.log('🔥 == result == 🔥', JSON.stringify(result));
 
-      return result;
+      // return result;
 
      
     } else if (type == 1) {
@@ -132,19 +144,30 @@ export class GamificationService {
 
       result = await queryBuilder.getRawMany();
     } else {
+      console.log('✅ consulta redencion de puntos ✅')
       queryBuilder = this.entityManager
         .createQueryBuilder()
-        .select([
-          'a.points as points',
-          'a.product as event',
-          `TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date`,
-          '0 as "dataType"',
-        ])
-        .from(UserPoints, 'a')
-        .where('a.idkeycloak = :userId', { userId });
+        // .select([
+        //   'a.points as points',
+        //   'a.product as event',
+        //   `TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date`,
+        //   '0 as "dataType"',
+        // ])
+        
+        // .from(UserPoints, 'a')
+        // .where('a.idkeycloak = :userId', { userId });
+        
+          .from(PaymentTransactions, 'a')
+          .where('a.userId = :userId', { userId });
+        
+        // .where('payment_transaction.userId = :idKeycloak', {
+        //   idKeycloak: userId,
+        // })
+        
       result = await queryBuilder.getRawMany();
     }
     console.log('🚀 ~ GamificationService ~ result: 139', result);
+    
     return result;
   }
 
