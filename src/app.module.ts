@@ -21,7 +21,7 @@ import {
 } from 'nest-keycloak-connect';
 import { APP_GUARD } from '@nestjs/core';
 import { KeycloakConfigService } from './auth-kc/keycloak-config.service';
-import { AuthKcModule } from './auth-kc/auth-kc.module';
+import { KeycloakModuleAuth } from './auth-kc/auth-kc.module';
 import { KeycloakModule } from './keycloak/keycloak.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { GeographyModule } from './geography-module/geography-module.module';
@@ -37,7 +37,7 @@ import { PaywallModule } from './paywall/paywall.module';
     }),
     KeycloakConnectModule.registerAsync({
       useExisting: KeycloakConfigService,
-      imports: [AuthKcModule],
+      imports: [KeycloakModuleAuth],
     }),
     // AppConfigModule,
     UserModule,
@@ -47,7 +47,7 @@ import { PaywallModule } from './paywall/paywall.module';
     MailModule,
     PaymentModule,
     RegisterlogModule,
-    AuthKcModule,
+    KeycloakModuleAuth,
     KeycloakModule,
     GamificationModule,
     GeographyModule,

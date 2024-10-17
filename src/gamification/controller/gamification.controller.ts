@@ -1,6 +1,7 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { GamificationService } from '../service/gamification.service';
-import { Public, Unprotected } from 'nest-keycloak-connect';
+import { Public, Resource, Unprotected } from 'nest-keycloak-connect';
+import { JwtAuthGuard } from 'src/auth-kc/guards/jwt-auth.guard';
 
 @Controller('gamification')
 @Unprotected()
@@ -35,7 +36,8 @@ export class GamificationController {
   //   return this.gamificationService.GetTotalPoints(userId);
   // }
 
-  @Public(true)
+  // @Public(true)
+  @UseGuards(JwtAuthGuard)
   @Get('/advance_cluster/:idSite/:idKeycloak')
   getAdvanceCluster(
     @Param('idSite') idSite: number,
@@ -44,7 +46,9 @@ export class GamificationController {
     return this.gamificationService.getAdvanceCluster(idSite, idKeycloak);
   }
 
-  @Public(true)
+  // @Public(true)
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('/total_point/:userId')
   getTotalPoints(@Param('userId') userId: string) {
     console.log('userId', userId);
