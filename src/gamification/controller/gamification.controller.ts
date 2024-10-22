@@ -9,6 +9,8 @@ export class GamificationController {
   constructor(private readonly gamificationService: GamificationService) {}
   // SETEO DE VALOR MONETARIO DEL PUNTO Y FECHA EXPIRACION
   // 1- Obiene el valor unitario (en pesos) del punto
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('/point_value/filter-pagination/:idSite/:userId/:page/:limit/:type')
   findPointValueBySite(
     @Param('idSite') idSite: number,
@@ -25,7 +27,8 @@ export class GamificationController {
       type,
     );
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('/point_tobe_addressed/:userId')
   ListPointsToBeAddressed(@Param('userId') userId: string) {
     return this.gamificationService.ListPointsToBeAddressed(userId);
@@ -54,7 +57,8 @@ export class GamificationController {
     console.log('userId', userId);
     return this.gamificationService.getTotalPoints(userId);
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('/plan/:idKeycloak')
   getPlan(@Param('idKeycloak') idKeycloak: string) {
     console.log('idKeycloak', idKeycloak);
