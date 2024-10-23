@@ -12,15 +12,14 @@ import { UserDetailsPayment } from './entity/user-details-payment.entity';
 import { MarketplaceProduct } from './entity/marketplace_products.entity';
 import { PaymentGateway } from './entity/payment.entity.entity';
 import { UserPlan } from 'src/common/entity/user_plan.entity';
-import { use } from 'passport';
+import { PaymentTransaction } from './entity/payment-transactions.entity';
 @Injectable()
 export class PaymentService {
   private readonly apiUrlLocations =
     'https://raw.githubusercontent.com/marcovega/colombia-json/master/colombia.json';
-  private paymentGateways: any;
+
   private payPalClient: paypal.core.PayPalHttpClient;
-  private login = '716602852a0cdef7a2cd5894d25b0887';
-  private tranKey = 'yRm9C73F';
+ 
   paypalWebhookEvents = [
     { event: 'CHECKOUT.ORDER.APPROVED', id: 0 },
     { event: 'PAYMENT.CAPTURE.COMPLETED', id: 1 },
@@ -42,32 +41,13 @@ export class PaymentService {
     private readonly paymentGatewayRepository: Repository<PaymentGateway>,
     @InjectRepository(UserPlan)
     private readonly userPlanRepository: Repository<UserPlan>,
-  ) {
-    // this.onModuleInit().then((reponse) => {
-    //   this.paymentGateways = reponse;
-    // });
-    // let environment;
-    // if (process.env.NODE_ENV === 'production') {
-    //   environment = new paypal.core.LiveEnvironment(
-    //     'PAYPAL-CLIENT-ID',
-    //     'PAYPAL-CLIENT-SECRET',
-    //   );
-    // } else {
-    // }
-    // environment = new paypal.core.SandboxEnvironment(
-    //   'ASRIEdSNyHMXXoQBSRjeri-t9REOvpvPhI8MN36MKEV3-72Tb4jiECEYCwWRwcfirUeBVsXOSWc677Uv',
-    //   'EH9DeZ1D1s0bFsPHP9j0vyCpIkQZ8LKN6tVo3GyLE0YQbxw0pafVuGxgP44ePcY24NtFp1tzuCG17V_gz2',
-    // );
-    // this.payPalClient = new paypal.core.PayPalHttpClient(environment);
-  }
+    @InjectRepository(PaymentTransaction)
+    private readonly paymentTransactionRepository: Repository<PaymentTransaction>,
+  ) {}
 
   configurePaypalClient({ clientId, clientSecret }) {
     let environment;
-    console.log('✅ configurePaypalClient - environment ✅', {
-      clientId,
-      clientSecret,
-    });
-    console.log('✅ configurePaypalClient - environment ✅', process.env);
+
     if (process.env.NODE_ENV === 'production') {
       environment = new paypal.core.LiveEnvironment(clientId, clientSecret);
     } else {
@@ -76,11 +56,89 @@ export class PaymentService {
     this.payPalClient = new paypal.core.PayPalHttpClient(environment);
   }
 
-  // //Usar el onModuleInit para cargar los gateways de pago
-  // async onModuleInit({ cli }) {
-  //   // this.paymentGateways = await this.paymentGatewayRepository.find();
-  //   return this.paymentGatewayRepository.find().then((response) => response);
-  // }
+
+  async createTransactionWithPoints(paymentGateway:any) {
+
+   
+     const saveMainTransactionWithPoints = await this.paymentTransactionRepository.save(paymentGateway);
+
+    let id_user_details_payment = null;
+      if (paymentGateway.products) {
+        const userDetail = new UserDetailsPayment();
+        userDetail.first_name = paymentGateway?.data?.names;
+        userDetail.last_name = paymentGateway?.data?.lastName;
+        userDetail.email = paymentGateway?.data?.email;
+        userDetail.phone = paymentGateway?.data?.phone;
+        userDetail.cedula = paymentGateway?.data?.cedula;
+        userDetail.typo_de_documento = paymentGateway?.data?.typo_de_documento;
+        userDetail.address = paymentGateway?.data?.address;
+        userDetail.address_reference = paymentGateway?.data?.referenceAddress;
+        userDetail.region = paymentGateway?.data?.region;
+        userDetail.city = paymentGateway?.data?.city;
+        userDetail.postal_code = paymentGateway?.data?.zipCode;
+        const user_details_payment =
+          await this.userDetailsPaymentRepository.save(userDetail);
+          id_user_details_payment = user_details_payment.id;
+      }
+
+
+       //Guardar en la tabla subscriptions
+      const subscription = new Subscription();
+      subscription.id_plan = paymentGateway.id_plan || null;
+      subscription.id_rate = paymentGateway.id_rate || null;
+      subscription.transacction = paymentGateway.transacction || null;
+      subscription.sysdate = new Date();
+      subscription.id_version = paymentGateway.id_version || null;
+      subscription.id_user = paymentGateway?.data?.id_user;
+      subscription.cancellation_status = 4;
+      subscription.transaction_type = paymentGateway?.data?.products ? 'product' : 'plan';
+      subscription.amount = paymentGateway?.amount;
+      subscription.payment_gateway_id = 2;
+      subscription.user_details_payment_id = id_user_details_payment;
+      subscription.id_order = paymentGateway?.data?.order_id;
+      subscription.id_site = paymentGateway.id_site || 1;
+      const subscriptionSaved = await this.subscriptionRepository.save(
+        subscription,
+      );
+      console.log('-- subscriptionSaved --', JSON.stringify(subscriptionSaved));
+      const userPlan = new UserPlan();
+      userPlan.idUser = paymentGateway?.data?.id_user;
+      userPlan.isActive = false;
+      userPlan.dateExpiredPlan = new Date(
+        new Date().setDate(new Date().getDate() + 30),
+      );
+      userPlan.dateInitPlan = new Date();
+      userPlan.idVersion = paymentGateway?.data?.id_version || null;
+      await this.userPlanRepository.save(userPlan);
+
+
+       //guardar en la tabla marketplace_products el array de productos
+       if (paymentGateway?.data?.products) {
+        console.log('Productos', paymentGateway?.data?.products);
+        paymentGateway?.data?.products.forEach(async (product) => {
+          const marketplaceProduct = new MarketplaceProduct();
+          marketplaceProduct.id_transaction =
+            subscription?.id_transaction || '';
+          marketplaceProduct.id_product = product.id;
+          marketplaceProduct.name_product = product.name;
+          marketplaceProduct.price = product.price;
+          marketplaceProduct.quantity = product.quantity;
+          marketplaceProduct.points = product.points;
+          marketplaceProduct.is_paid_with_points = product.isPaidWithPoints;
+          marketplaceProduct.description = product.description;
+          marketplaceProduct.image = product.image;
+          await this.marketplaceProductRepository.save(marketplaceProduct);
+        });
+      }
+
+      return {
+        transaction:saveMainTransactionWithPoints.id,
+        id_subscription:subscription?.id_subscription,
+        userPlanId:userPlan?.id,
+        status:"created"
+      }
+
+  }
 
   async getPaymentGatewateToSite({ idSite, paymentGatewayName }) {
     return this.paymentGatewayRepository
@@ -118,16 +176,10 @@ export class PaymentService {
         paymentGatewayName: 'evertec',
       });
 
-      console.log(
-        '🚀 ~ PaymentService ~ createOrderPaypal ~ evertecCredentialsToSite:',
-        evertecCredentialsToSite,
-      );
-
       const auth = this.generateAuth({
         login: evertecCredentialsToSite?.clientId,
         tranKey: evertecCredentialsToSite?.apiKey,
       });
-      console.log('🚀 ~ PaymentService ~ createOrderEvertec ~ auth:', auth);
 
       const expirationDate = new Date();
       expirationDate.setMinutes(expirationDate.getMinutes() + 30);
@@ -162,7 +214,6 @@ export class PaymentService {
         notificationUrl: `${process.env.API_CLIENT_URL}/payment/notifications`,
         expiration,
         returnUrl: `${process.env.FRONTEND_CLIENT_URL}/marketplace`,
-        // returnUrl: 'http://localhost:5173/subscribe',
         ipAddress: '127.0.0.1', // Dirección IP del cliente
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', // Agente de usuario del navegador
@@ -217,7 +268,7 @@ export class PaymentService {
       const subscriptionSaved = await this.subscriptionRepository.save(
         subscription,
       );
-      console.log('-- subscriptionSaved --', JSON.stringify(subscriptionSaved));
+
       const userPlan = new UserPlan();
       userPlan.idUser = orderData.id_user;
       userPlan.isActive = false;
@@ -248,7 +299,6 @@ export class PaymentService {
 
       return response.data;
     } catch (error) {
-      console.error(error);
       throw new Error('Error creating order');
     }
   }
@@ -284,13 +334,7 @@ export class PaymentService {
       const response = await axios.request(config);
       const id_order = response.data.requestId;
 
-      // if(response.data.status.status === 'APPROVED') {
-      //   //Setear el campo cancellation_status de la tabla subscriptions a 0
-      //   console.log('Pago aprobado', id_order);
-      //   await this.setCancellationStatus(id_order, 0);
-      // }
-
-      // console.log('requestId', response.data);
+      
       if (response.data.status.status === 'APPROVED') {
         //Setear el campo cancellation_status de la tabla subscriptions a 0
         console.log('Pago aprobado', id_order);
@@ -345,18 +389,12 @@ export class PaymentService {
   }
 
   async createOrderPaypal(orderData: any) {
-    console.log(
-      '🚀 ~ PaymentService ~ createOrderPaypal ~ createOrderPaypal: 🚀',
-    );
 
     const paypalCredentialsToSite = await this.getPaymentGatewateToSite({
       idSite: orderData?.idSite,
       paymentGatewayName: 'paypal',
     });
-    console.log(
-      '🚀 ~ PaymentService ~ createOrderPaypal ~ paypalCredentialsToSite:',
-      paypalCredentialsToSite,
-    );
+
 
     this.configurePaypalClient({
       clientId: paypalCredentialsToSite.clientId,
@@ -387,10 +425,7 @@ export class PaymentService {
 
     try {
       const response = await this.payPalClient.execute(request);
-      console.log(
-        '🚀 ~ PaymentService ~ createOrderPaypal ~ response:',
-        response,
-      );
+    
       const orderId = response.result.id;
 
       if (orderData.products) {
@@ -471,7 +506,6 @@ export class PaymentService {
         },
       };
     } catch (error) {
-      console.log(error);
       return error;
     }
   }
@@ -738,7 +772,7 @@ export class PaymentService {
           User_id: userId || "",
         },
       })
-      console.log("👨‍🚒👨‍🚒👨‍🚒👨‍🚒 ~ PaymentService ~ getMarketplaceProductsHistory ~ responseFavorites:", JSON.stringify(responseFavorites?.data, null, 2));
+     
 
 
       const products = flatMarketplaceProducts.map((product) => {

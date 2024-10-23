@@ -17,6 +17,12 @@ import { Unprotected, Public } from 'nest-keycloak-connect';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
+
+  @Post('create')
+  async createPaymentWithPoints(@Body() data:any) {
+    return this.paymentService.createTransactionWithPoints(data)
+  }
+
   @Post('evertec/create-order')
   async createOrder(@Body() createOrderDto: any) {
     console.log(
