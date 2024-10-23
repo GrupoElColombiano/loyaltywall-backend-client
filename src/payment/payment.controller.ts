@@ -7,10 +7,12 @@ import {
   Param,
   HttpException,
   HttpStatus,
-  Query,
+  Query, 
+  UseGuards 
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { Unprotected, Public } from 'nest-keycloak-connect';
+import { JwtAuthGuard } from 'src/auth-kc/guards/jwt-auth.guard';
 
 @Controller('payment')
 @Unprotected()
@@ -23,6 +25,8 @@ export class PaymentController {
     return this.paymentService.createTransactionWithPoints(data)
   }
 
+ 
+  @UseGuards(JwtAuthGuard)
   @Post('evertec/create-order')
   async createOrder(@Body() createOrderDto: any) {
     console.log(
@@ -33,7 +37,8 @@ export class PaymentController {
     console.log('🚀 ~ PaymentController ~ createOrder ~ result:', result);
     return result;
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('evertec/check-status/:requestId/:idSite')
   async checkTransactionStatus(
     @Param('requestId') requestId: string,
@@ -45,7 +50,8 @@ export class PaymentController {
     });
     return result;
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Post('notifications')
   async handleNotification(@Body() notificationData: any) {
     const result = await this.paymentService.handleNotification(
@@ -57,7 +63,8 @@ export class PaymentController {
   //========================================================//
 
   //PAYPAL
-  //Create order paypal
+  //Create order paypal 
+  @UseGuards(JwtAuthGuard)
   @Post('paypal/create-order')
   async createOrderPaypal(@Body() orderData: any) {
     try {
@@ -69,7 +76,8 @@ export class PaymentController {
     }
   }
 
-  //Controlador de webhook para informar a la aplicación que se ha realizado un pago
+  //Controlador de webhook para informar a la aplicación que se ha realizado un pago 
+  @UseGuards(JwtAuthGuard)
   @Post('paypal/webhook')
   async webhook(@Body() body: any) {
     console.log('webhook', body);
@@ -80,7 +88,8 @@ export class PaymentController {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Post('paypal/capture-order')
   async captureOrder(@Body() body: any) {
     console.log('la orden ingresó: ', body);
@@ -92,7 +101,8 @@ export class PaymentController {
     }
   }
 
-  //Consultar el estado de una order
+  //Consultar el estado de una order 
+  @UseGuards(JwtAuthGuard)
   @Get('paypal/order/:id')
   async getOrder(@Param('id') id: string) {
     try {
@@ -104,7 +114,8 @@ export class PaymentController {
   }
 
   //========================================================//
-  //Metodo para obtener el historial de transacciones de la tabla de suscripciones y filtrar por id_user
+  //Metodo para obtener el historial de transacciones de la tabla de suscripciones y filtrar por id_user 
+  @UseGuards(JwtAuthGuard)
   @Get('subscriptions/:userId')
   async getSubscriptions(
     @Param('userId') userId: string,
@@ -114,7 +125,8 @@ export class PaymentController {
     return result;
   }
 
-  //Metodo para obtener el historial de transacciones de productos de la tabla de suscripciones y filtrar por id_site
+  //Metodo para obtener el historial de transacciones de productos de la tabla de suscripciones y filtrar por id_site 
+  @UseGuards(JwtAuthGuard)
   @Get('subscriptions/site/:idSite/:userId')
   async getSubscriptionsBySite(@Param('idSite') idSite: number, @Param('userId') userId: string) {
     const result = await this.paymentService.getMarketplaceProductsHistory(
@@ -125,12 +137,14 @@ export class PaymentController {
   }
 
   //========================================================//
-  //Metodo para obtener ciudades y departamentos de Colombia
+  //Metodo para obtener ciudades y departamentos de Colombia 
+  @UseGuards(JwtAuthGuard)
   @Get('departments')
   async getAllDepartments() {
     return await this.paymentService.getAllDepartments();
   }
-
+ 
+  @UseGuards(JwtAuthGuard)
   @Get('departments/:id/cities')
   async getCitiesByDepartmentId(@Param('id') id: number) {
     return await this.paymentService.getCitiesByDepartmentId(id);
