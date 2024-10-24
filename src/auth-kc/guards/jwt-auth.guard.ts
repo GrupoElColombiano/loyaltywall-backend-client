@@ -25,6 +25,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       request.user = payload; // Attach the payload to the request
       return true;
     } catch (error) {
+      console.log({a:error, b:token}, "💥💥💥 FROM PAYLOAD VALIDATION")
       throw new UnauthorizedException('Token validation failed');
     }
   }
@@ -55,6 +56,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return new Promise((resolve, reject) => {
       jwt.verify(token, signingKey, { algorithms: ['RS256'] }, (err, decoded) => {
         if (err) {
+          console.log({a:err, b:token}, "💥💥💥 FROM JWT PROMISE")
           reject(new UnauthorizedException('Token validation failed'));
         } else {
           resolve(decoded);
