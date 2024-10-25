@@ -1,7 +1,6 @@
 import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
-import * as jwksClient from 'jwks-rsa';
 import * as jwt from 'jsonwebtoken';
 
 @Injectable()
@@ -14,6 +13,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromRequest(request);
 
+    if (request?.url === '/') {
+      return true;
+    }
 
     if (!token) {
       throw new UnauthorizedException('No token found');
@@ -25,7 +27,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       request.user = payload; // Attach the payload to the request
       return true;
     } catch (error) {
-      console.log({a:error, b:token}, "💥💥💥 FROM PAYLOAD VALIDATION")
+      console.log(error, "💥💥💥 FROM PAYLOAD VALIDATION");
       throw new UnauthorizedException('Token validation failed');
     }
   }
@@ -37,26 +39,37 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return authHeader.split(' ')[1]; // Extract token from "Bearer <token>"
   }
 
-  // Verify the token using Keycloak's JWKS endpoint
-  private async verifyTokenWithKeycloak(token: string): Promise<any> {
-    const client = jwksClient({
-      jwksUri: `${process.env.KEYCLOAK_AUTH_SERVER_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`,
-    });
+  // Verify the token using Keycloak's JWKS endpoint with fetch
+  async verifyTokenWithKeycloak(token: string): Promise<any> {
+    const jwksUrl = `${process.env.KEYCLOAK_AUTH_SERVER_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`;
+    
+    // Use fetch to get JWKS data
+    const response = await fetch(jwksUrl);
+    
+    if (!response.ok) {
+      throw new UnauthorizedException('Failed to fetch JWKS');
+    }
 
-    // Decode the token to get the `kid` (Key ID)
+    const data = await response.json();
+   
+    // Decode the token to get the `kid`
     const decodedToken: any = jwt.decode(token, { complete: true });
     if (!decodedToken || !decodedToken.header || !decodedToken.header.kid) {
       throw new UnauthorizedException('Invalid token');
     }
 
-    const key = await client.getSigningKey(decodedToken.header.kid);
-    const signingKey = key.getPublicKey();
+    // Find the signing key in the JWKS
+    const signingKey = data.keys.find(key => key.kid === decodedToken.header.kid);
+    if (!signingKey) {
+      throw new UnauthorizedException('Signing key not found');
+    }
 
-    // Verify the token using the retrieved public key
+    // Format the public key properly
+    const publicKey = `-----BEGIN CERTIFICATE-----\n${signingKey.x5c[0]}\n-----END CERTIFICATE-----`;
+
     return new Promise((resolve, reject) => {
-      jwt.verify(token, signingKey, { algorithms: ['RS256'] }, (err, decoded) => {
+      jwt.verify(token, publicKey, { algorithms: ['RS256'] }, (err, decoded) => {
         if (err) {
-          console.log({a:err, b:token}, "💥💥💥 FROM JWT PROMISE")
           reject(new UnauthorizedException('Token validation failed'));
         } else {
           resolve(decoded);
