@@ -104,10 +104,10 @@ export class KeycloakService {
           this.httpService.put(url, user, { headers: headersRequest })
         );
       } catch (error) {
-        console.log('error', error)
+        console.log('ERROR WITH HTTP SERVICE PUT TO KEYCLOAK💥💥', error)
       }
 
-      console.log('response', response.status)
+      console.log('response status 🙌🙌', response.status)
 
       if (response.status === 204) {
         return {
@@ -119,6 +119,7 @@ export class KeycloakService {
         throw new NotFoundException('Failed to update the user');
       }
     } catch (error) {
+      console.log(error, "THIS IS THE ERROR EDITING THE USER💥💥")
       throw new NotFoundException(error.message);
     }
   }
