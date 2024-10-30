@@ -100,29 +100,32 @@ export class KeycloakService {
    * @returns {Promise<any>} A promise that resolves to the updated user data.
    */
    async editUser(tokenAccess: string, user: any, id: string): Promise<any> {
-    console.log("user", user, "id", id);
+    console.log("user", user, "id", id, "tokenAccess", tokenAccess);
     try {
       const headersRequest = {
         'Content-Type': 'application/json',
         Authorization: `${tokenAccess}`,
         'custom-header': 'custom-header-value',
       };
-      //console.log('token', tokenAccess);
+  
       const url = `${this.authServerUrl}realms/${this.realm}/loyaltywall-user/update-attributes`;
-
       console.log('url', url);
-      console.log('headers',headersRequest);
-      let response: any;
-      try{
-        response = await firstValueFrom(
-          this.httpService.put(url, user, { headers: headersRequest })
-        );
+      console.log('headers', headersRequest);
+  
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'PUT',
+          headers: headersRequest,
+          body: JSON.stringify(user),
+        });
       } catch (error) {
-        console.log('ERROR WITH HTTP SERVICE PUT TO KEYCLOAK💥💥', error)
+        console.log('ERROR WITH FETCH PUT TO KEYCLOAK💥💥', error);
+        throw error;
       }
-
-      console.log('response status 🙌🙌', response.status)
-
+  
+      console.log('response status 🙌🙌', response.status);
+  
       if (response.status === 204) {
         return {
           status: 200,
@@ -133,10 +136,11 @@ export class KeycloakService {
         throw new NotFoundException('Failed to update the user');
       }
     } catch (error) {
-      console.log(error, "THIS IS THE ERROR EDITING THE USER💥💥")
+      console.log(error, "THIS IS THE ERROR EDITING THE USER💥💥");
       throw new NotFoundException(error.message);
     }
   }
+  
 
 
   /**
