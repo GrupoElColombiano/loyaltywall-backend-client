@@ -20,7 +20,7 @@ import { Public } from 'nest-keycloak-connect';
 @ApiTags('KEYCLOAK')
 @ApiBearerAuth()
 export class KeycloakController {
-  constructor(private readonly keycloakService: KeycloakService) {}
+  constructor(private readonly keycloakService: KeycloakService) { }
 
   /**
    * Login and retrieve an authentication token.
