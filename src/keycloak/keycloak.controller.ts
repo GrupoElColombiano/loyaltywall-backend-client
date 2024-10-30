@@ -7,18 +7,10 @@ import {
   Post,
   Get,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
 import { KeycloakService } from './keycloak.service';
 import { Public } from 'nest-keycloak-connect';
 
 @Controller('keycloak')
-@ApiTags('KEYCLOAK')
-@ApiBearerAuth()
 export class KeycloakController {
   constructor(private readonly keycloakService: KeycloakService) { }
 
@@ -29,7 +21,6 @@ export class KeycloakController {
    */
   @Public(true)
   @Post('token')
-  @ApiOperation({ summary: 'Login and retrieve an authentication token' })
   async login(): Promise<any> {
     return await this.keycloakService.loginToken();
   }
@@ -41,7 +32,6 @@ export class KeycloakController {
    */
   @Public(true)
   @Get('users/list')
-  @ApiOperation({ summary: 'List all users' })
   async listUsers(@Headers('Authorization') tokenAccess: string): Promise<any> {
     console.log('token', tokenAccess);
     return await this.keycloakService.listUsers(tokenAccess);
@@ -56,8 +46,6 @@ export class KeycloakController {
    */
   @Public(true)
   @Put('users/edit/:id')
-  @ApiOperation({ summary: 'Edit a user by ID' })
-  @ApiResponse({ status: 200, description: 'Success' })
   async editUser(
     @Body() user: any,
     @Param('id') id: any,
@@ -75,8 +63,6 @@ export class KeycloakController {
    */
   @Public(true)
   @Put('users/change-password/:id')
-  @ApiOperation({ summary: 'Cambiar la contraseña de un usuario por ID' })
-  @ApiResponse({ status: 200, description: 'Éxito' })
   async changePassword(
     @Body() newPassword: any,
     @Param('id') id: any,
@@ -98,7 +84,6 @@ export class KeycloakController {
    */
   @Public(true)
   @Get('users/:id')
-  @ApiOperation({ summary: 'Find a user by ID' })
   async listUser(
     @Headers('Authorization') tokenAccess: string,
     @Param('id') id: any,
