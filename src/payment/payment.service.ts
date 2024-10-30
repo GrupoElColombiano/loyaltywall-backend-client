@@ -749,7 +749,7 @@ export class PaymentService {
         )
         .getMany();
 
-        console.log(subscriptions, "THE SUBSCRIPTIONS HERE 👽👽👽");
+     
 
       //Retornar sólo las transacciones que tengan productos o que tengan el campo subscription.id_plan en null, porque si está en null es una transacción de productos. Retornar s´lo el campo marketplaceProducts
       const filteredSubscriptions = subscriptions

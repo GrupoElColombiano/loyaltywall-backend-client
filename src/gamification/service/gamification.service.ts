@@ -69,12 +69,12 @@ export class GamificationService {
     pageSize: number,
     type: number,
   ) {
-    console.log('🚀 ~ GamificationService ~ userId:', userId);
 
     // const pointValue = await this.pointsValueRepo.find();
     const offset = (page - 1) * pageSize;
     let queryBuilder;
     let result;
+    let totalItems;
 
     if (type == 0) {
       const pointsEventsQuery = `
@@ -101,17 +101,6 @@ export class GamificationService {
         LIMIT $3
       `;
 
-      // const countQuery = `
-      //   SELECT COUNT(*) AS total
-      //   FROM (${combinedQuery}) AS subquery
-      // `;
-
-      // // Ejecutar la consulta para contar los registros
-      // const totalRecordsResult = await this.entityManager.query(countQuery, [
-      //   userId,
-      // ]);
-      // console.log("🚀 ~ GamificationService ~ totalRecordsResult:", totalRecordsResult)
-
       result = await this.entityManager.query(combinedQuery, [
         userId,
         offset,
@@ -119,10 +108,22 @@ export class GamificationService {
         
       ]);
 
+      const countQuery = `
+      SELECT COUNT(*) as total FROM (
+        (${pointsEventsQuery})
+        UNION ALL
+        (${paymentTransactionsQuery})
+      ) as combined_results
+    `;
+    const countResult = await this.entityManager.query(countQuery, [userId]);
 
-      console.log('🔥 == result == 🔥', JSON.stringify(result));
+    totalItems = parseInt(countResult[0].total, 10);
 
-      // return result;
+
+    return {
+      totalItems,
+      items: result,
+    }
 
      
     } else if (type == 1) {
@@ -143,32 +144,90 @@ export class GamificationService {
         .limit(pageSize);
 
       result = await queryBuilder.getRawMany();
+
+      // Clone the query builder to get total count without offset and limit
+      const countQueryBuilder = queryBuilder.clone();
+      countQueryBuilder.select('COUNT(*)', 'totalItems').offset(offset).limit(pageSize);
+
+      // Execute the count query to get the total number of items
+      const totalItemsResult = await countQueryBuilder.getRawOne();
+      const totalItems = parseInt(totalItemsResult.totalItems, 10);
+
+
+      return {
+        items:result,
+        totalItems
+      }
+
+
     } else {
-      console.log('✅ consulta redencion de puntos ✅')
+      //TODO: this query might change looking for data in another table
+      // queryBuilder = this.entityManager
+      //   .createQueryBuilder()
+      //   // .select([
+      //   //   'a.points as points',
+      //   //   'a.product as event',
+      //   //   `TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date`,
+      //   //   '0 as "dataType"',
+      //   // ])
+        
+      //   // .from(UserPoints, 'a')
+      //   // .where('a.idkeycloak = :userId', { userId });
+        
+      //     .from(PaymentTransactions, 'a')
+      //     .where('a.userId = :userId', { userId });
+        
+      //   // .where('payment_transaction.userId = :idKeycloak', {
+      //   //   idKeycloak: userId,
+      //   // })
+        
+      // result = await queryBuilder.getRawMany();
+
+      //         // Clone the query builder for counting total items
+      //   const countQueryBuilder = queryBuilder.clone();
+      //   countQueryBuilder.select('COUNT(*)', 'totalItems').offset(offset).limit(pageSize);
+
+      //   // Execute the count query to get the total number of items
+      //   const totalItemsResult = await countQueryBuilder.getRawOne();
+      //   const totalItems = parseInt(totalItemsResult.totalItems, 10);
+
+      //   return {
+      //     items: result,
+      //     totalItems,
+      //   };
+
       queryBuilder = this.entityManager
-        .createQueryBuilder()
-        // .select([
-        //   'a.points as points',
-        //   'a.product as event',
-        //   `TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date`,
-        //   '0 as "dataType"',
-        // ])
-        
-        // .from(UserPoints, 'a')
-        // .where('a.idkeycloak = :userId', { userId });
-        
-          .from(PaymentTransactions, 'a')
-          .where('a.userId = :userId', { userId });
-        
-        // .where('payment_transaction.userId = :idKeycloak', {
-        //   idKeycloak: userId,
-        // })
-        
-      result = await queryBuilder.getRawMany();
+      .createQueryBuilder()
+      .select([
+        'a.points as points',
+        'b.name as event',
+        `TO_CHAR(a.registration_date, 'DD/MM/YYYY') as registration_date`,
+        '1 as dataType',
+      ])
+      .from(PointsEvents, 'a')
+      .innerJoin(Event, 'b', 'b.id_event = a."eventIdEvent"')
+      .innerJoin(EventsPointsSite, 'c', 'c.eventIdEvent = a."eventIdEvent"')
+      .innerJoin(Site, 'd', 'd.idSite = a."siteIdSite"')
+      .where('a.userId = :userId', { userId }) // Agrega la condición userId aquí
+      .offset(offset)
+      .limit(pageSize);
+
+    result = await queryBuilder.getRawMany();
+
+    // Clone the query builder to get total count without offset and limit
+    const countQueryBuilder = queryBuilder.clone();
+    countQueryBuilder.select('COUNT(*)', 'totalItems').offset(offset).limit(pageSize);
+
+    // Execute the count query to get the total number of items
+    const totalItemsResult = await countQueryBuilder.getRawOne();
+    const totalItems = parseInt(totalItemsResult.totalItems, 10);
+
+
+    return {
+      items:result,
+      totalItems
     }
-    console.log('🚀 ~ GamificationService ~ result: 139', result);
-    
-    return result;
+    }
   }
 
   async ListPointsToBeAddressed(userId: any) {
@@ -269,7 +328,7 @@ export class GamificationService {
       .leftJoinAndSelect('points_events.event', 'event')
       .where('points_events.userId = :idKeycloak', { idKeycloak: idKeycloak })
       .getMany();
-    console.log('Eventos del usuario', userPoints);
+   
 
     //Cluster 1
     clusters.forEach((cluster) => {
@@ -296,15 +355,7 @@ export class GamificationService {
         eventosAgrupadosCluster1.forEach((eventoAgrupado) => {
           if (clusterEvent.name === eventoAgrupado.name) {
             cuent++;
-            // console.log('cluster1', clusterEvent.name);
-            // console.log('eventoAgrupado', eventoAgrupado.name);
-            // console.log('Verdader o falso', clusterEvent.name === eventoAgrupado.name)
-            // console.log('CLUSTER', cluster.event_repeats)
-            // console.log('numero event_repeats', eventoAgrupado.count)
-            // console.log(' eventoAgrupado >= cluster', eventoAgrupado.count >= cluster.event_repeats)
-            // console.log('numero de veces', cuent)
-            // console.log('porcentual_value', cluster.porcentual_value)
-            // console.log('<======================================================>')
+            
             if (eventoAgrupado.count >= cluster.event_repeats) {
               console.log('######entro al if######');
               clusterAdvance = clusterAdvance + cluster.porcentual_value;
@@ -324,11 +375,9 @@ export class GamificationService {
         const clusterPoint: any = cluster.clusters;
         if (clusterPoint.name === 'Cluster 2') {
           userPoints.forEach((userPoint) => {
-            // console.log('########################################CLUSTER 2#####################################', userPoint);
+            
             const clusterName: any = cluster.events;
-            // console.log('cluster2', clusterName.name);
-            // console.log('userPoint', userPoint.event.name);
-            // console.log('Nombres iguales', clusterName.name === userPoint.event.name)
+           
             if (clusterName.name === userPoint.event.name) {
               userEvents.push({
                 cluster: clusterPoint.name,
@@ -379,7 +428,7 @@ export class GamificationService {
       });
       clusterLevel = 'Cluster 2';
     }
-    console.log('clusterAdvance Cluster 2', clusterAdvance);
+  
 
     //Cluster 3
     if (clusterAdvance >= 100) {
@@ -418,7 +467,7 @@ export class GamificationService {
       });
       clusterLevel = 'Cluster 3';
     }
-    console.log('clusterAdvance Cluster 3', clusterAdvance);
+   
 
     return {
       clusterLevel,
@@ -433,7 +482,7 @@ export class GamificationService {
       .where('points_events.userId = :idKeycloak', { idKeycloak: userId })
       .select('SUM(points_events.points)', 'total_points');
     const total_puntos = await queryBuilder.getRawOne();
-    console.log('total_puntos', total_puntos);
+   
 
     //Traer el total de puntos redimidos o gastados de payment_transaction
     const queryBuilderPointsConsumed = await this.paymentTransactions
@@ -443,7 +492,6 @@ export class GamificationService {
       })
       .select('SUM(payment_transaction.amount)', 'total_points_consumed')
       .getRawOne();
-    console.log('queryBuilderPointsConsumed', queryBuilderPointsConsumed);
 
     //De los puntos totales restar los puntos consumidos
     const result =
@@ -455,136 +503,208 @@ export class GamificationService {
     };
   }
 
+  
+
   async getPlan(idKeycloak: string) {
-    console.log('idKeycloak', idKeycloak);
-    let id_plan = 0;
-    let id_site = 0;
-    const plansProductCategory = [];
-    const idPlansProductCategorys = [];
-    const idProducts = [];
-    const idCategorys = [];
-    const plan_suscrito = await this.paymentService.getPlanByUserId(idKeycloak);
-    console.log('PLAN SUSCRITO', plan_suscrito);
+    // console.log('idKeycloak', idKeycloak);
+    // let id_plan = 0;
+    // let id_site = 0;
+    // const plansProductCategory = [];
+    // const idPlansProductCategorys = [];
+    // const idProducts = [];
+    // const idCategorys = [];
+    // const plan_suscrito = await this.paymentService.getPlanByUserId(idKeycloak);
+    // console.log('PLAN SUSCRITO', plan_suscrito);
 
     try {
-      const rawQuery = `
-            SELECT user_plan.*, plans.*, rates.*
-            FROM user_plan
-            JOIN plans ON user_plan.id_plan = plans."idPlan"
-            LEFT JOIN rates ON plans."idPlan" = rates."idPlan"
-            WHERE user_plan.id_user = $1
-            AND plans."userType" = 'Suscrito'
-            AND user_plan."is_active" = true;
-        `;
+      // const rawQuery = `
+      //       SELECT user_plan.*, plans.*, rates.*
+      //       FROM user_plan
+      //       JOIN plans ON user_plan.id_plan = plans."idPlan"
+      //       LEFT JOIN rates ON plans."idPlan" = rates."idPlan"
+      //       WHERE user_plan.id_user = $1
+      //       AND plans."userType" = 'Suscrito'
+      //       AND user_plan."is_active" = true;
+      //   `;
 
-      const connection = this.userPlan.manager.connection;
-      const queryResults = await connection.query(rawQuery, [idKeycloak]);
-      console.log('queryResults', queryResults);
+      // const connection = this.userPlan.manager.connection;
+      // const queryResults = await connection.query(rawQuery, [idKeycloak]);
+      // console.log('queryResults', queryResults);
 
-      let plan = null;
-      if (queryResults.length > 0) {
-        plan = { ...queryResults[0] };
-        plan.rates = queryResults.map((row) => ({
-          time: row.time,
-          rate: row.rate,
-          rate_special: row.rate_special,
-          rate_special_renewal: row.rate_special_renewal,
-          rate_renewal: row.rate_renewal,
-          duration: row.duration,
-          is_special: row.is_special,
-          date_start: row.date_start,
-          date_end: row.date_end,
-        }));
-        delete plan.isActive;
-        delete plan.id_plan;
-      }
+      // let plan = null;
+      // if (queryResults.length > 0) {
+      //   plan = { ...queryResults[0] };
+      //   plan.rates = queryResults.map((row) => ({
+      //     time: row.time,
+      //     rate: row.rate,
+      //     rate_special: row.rate_special,
+      //     rate_special_renewal: row.rate_special_renewal,
+      //     rate_renewal: row.rate_renewal,
+      //     duration: row.duration,
+      //     is_special: row.is_special,
+      //     date_start: row.date_start,
+      //     date_end: row.date_end,
+      //   }));
+      //   delete plan.isActive;
+      //   delete plan.id_plan;
+      // }
 
-      if (plan) {
-        id_plan = plan.idPlan;
-        id_site = plan.idSite;
-      }
+      // if (plan) {
+      //   id_plan = plan.idPlan;
+      //   id_site = plan.idSite;
+      // }
 
-      if (id_plan > 0 && id_site > 0) {
-        const rawQueryPlans = `
-          SELECT ppc.*
-          FROM "PlansProductCategory" ppc
-          WHERE ppc."idPlan" = $1 AND ppc."idSite" = $2;
-          `;
+      // if (id_plan > 0 && id_site > 0) {
+      //   const rawQueryPlans = `
+      //     SELECT ppc.*
+      //     FROM "PlansProductCategory" ppc
+      //     WHERE ppc."idPlan" = $1 AND ppc."idSite" = $2;
+      //     `;
 
-        const plansProductCategoryIf = await this.entityManager.query(
-          rawQueryPlans,
-          [id_plan, id_site],
-        );
+      //   const plansProductCategoryIf = await this.entityManager.query(
+      //     rawQueryPlans,
+      //     [id_plan, id_site],
+      //   );
 
-        plansProductCategory.push(plansProductCategoryIf);
-      }
+      //   plansProductCategory.push(plansProductCategoryIf);
+      // }
 
-      if (plansProductCategory.length > 0) {
-        plansProductCategory[0].forEach((element: any) => {
-          idProducts.push(element.idProduct);
-          idPlansProductCategorys.push(element.idPlansProductCategory);
-        });
-      }
+      // if (plansProductCategory.length > 0) {
+      //   plansProductCategory[0].forEach((element: any) => {
+      //     idProducts.push(element.idProduct);
+      //     idPlansProductCategorys.push(element.idPlansProductCategory);
+      //   });
+      // }
 
-      const products = await this.entityManager.query(
-        `
-            SELECT * FROM "product" WHERE "idProduct" = ANY($1);
-          `,
-        [idProducts],
-      );
+      // const products = await this.entityManager.query(
+      //   `
+      //       SELECT * FROM "product" WHERE "idProduct" = ANY($1);
+      //     `,
+      //   [idProducts],
+      // );
 
-      const categorys_access = await this.entityManager.query(
-        `
-            SELECT * FROM "categorys_access" WHERE "idPlansProductCategory" = ANY($1);
-          `,
-        [idPlansProductCategorys],
-      );
+      // const categorys_access = await this.entityManager.query(
+      //   `
+      //       SELECT * FROM "categorys_access" WHERE "idPlansProductCategory" = ANY($1);
+      //     `,
+      //   [idPlansProductCategorys],
+      // );
 
-      if (categorys_access.length > 0) {
-        categorys_access.forEach((element: any) => {
-          idCategorys.push(element.idCategory);
-        });
-      }
+      // if (categorys_access.length > 0) {
+      //   categorys_access.forEach((element: any) => {
+      //     idCategorys.push(element.idCategory);
+      //   });
+      // }
 
-      const categorys = await this.entityManager.query(
-        `
-            SELECT * FROM "categories" WHERE "idCategory" = ANY($1);
-        `,
-        [idCategorys],
-      );
+      // const categorys = await this.entityManager.query(
+      //   `
+      //       SELECT * FROM "categories" WHERE "idCategory" = ANY($1);
+      //   `,
+      //   [idCategorys],
+      // );
 
-      if (products.length > 0 && categorys.length > 0) {
-        products.forEach((product: any) => {
-          categorys.forEach((category: any) => {
-            if (product.idProduct === category.idProduct) {
-              product.category = category.name;
-            }
-          });
-        });
-      }
-      plan.products = [];
-      products.forEach((product: any) => {
-        const productEdit = {
-          name: product.name,
-          description: product.description,
-          category: product.category,
-        };
-        plan.products.push(productEdit);
-      });
+      // if (products.length > 0 && categorys.length > 0) {
+      //   products.forEach((product: any) => {
+      //     categorys.forEach((category: any) => {
+      //       if (product.idProduct === category.idProduct) {
+      //         product.category = category.name;
+      //       }
+      //     });
+      //   });
+      // }
+      // plan.products = [];
+      // products.forEach((product: any) => {
+      //   const productEdit = {
+      //     name: product.name,
+      //     description: product.description,
+      //     category: product.category,
+      //   };
+      //   plan.products.push(productEdit);
+      // });
 
-      delete plan.time;
-      delete plan.rate;
-      delete plan.rate_special;
-      delete plan.rate_special_renewal;
-      delete plan.rate_renewal;
-      delete plan.duration;
-      delete plan.is_special;
-      delete plan.date_start;
-      delete plan.date_end;
+      // delete plan.time;
+      // delete plan.rate;
+      // delete plan.rate_special;
+      // delete plan.rate_special_renewal;
+      // delete plan.rate_renewal;
+      // delete plan.duration;
+      // delete plan.is_special;
+      // delete plan.date_start;
+      // delete plan.date_end;
+
+      const detailPlan: any = {
+        id: 1,
+        date_expired_plan: new Date('2025-12-31'),
+        is_active: true,
+        id_version: 'v1.2.3',
+        id_user: 'user12345',
+        date_init_plan: new Date('2023-01-01'),
+        idSite: 101,
+        idPlan: 202,
+        idVersionPlan: 303,
+        description: 'Comprehensive membership plan with exclusive perks and services.',
+        name: 'Gold Membership',
+        userType: 'premium',
+        created_at: new Date('2023-01-01T10:00:00Z'),
+        updated_at: new Date('2024-10-29T15:30:00Z'),
+        rates: [
+          {
+            time: 'monthly',
+            rate: '29.99',
+            rate_special: '24.99',
+            rate_special_renewal: '27.99',
+            rate_renewal: '29.99',
+            duration: 1,
+            is_special: true,
+            date_start: '2023-01-01',
+            date_end: '2023-12-31',
+          },
+          {
+            time: 'quarterly',
+            rate: '79.99',
+            rate_special: '69.99',
+            rate_special_renewal: '74.99',
+            rate_renewal: '79.99',
+            duration: 3,
+            is_special: true,
+            date_start: '2023-01-01',
+            date_end: '2023-12-31',
+          },
+          {
+            time: 'annual',
+            rate: '299.99',
+            rate_special: '249.99',
+            rate_special_renewal: '269.99',
+            rate_renewal: '299.99',
+            duration: 12,
+            is_special: false,
+            date_start: '2023-01-01',
+            date_end: '2023-12-31',
+          },
+        ],
+        products: [
+          {
+            name: 'Premium Video Content',
+            description: 'Access to exclusive videos and tutorials.',
+            category: 'Media',
+          },
+          {
+            name: 'Priority Support',
+            description: 'Get priority customer support with a dedicated team.',
+            category: 'Support',
+          },
+          {
+            name: 'Member Discounts',
+            description: 'Special discounts on all products and services.',
+            category: 'Perks',
+          },
+        ],
+      };
+      
 
       return {
         message: 'Plan obtenido correctamente',
-        plan: plan,
+        plan: detailPlan,
       };
     } catch (error) {
       console.log('error', error);
@@ -593,19 +713,3 @@ export class GamificationService {
   }
 }
 
-/**
- *
- * SELECT ext.points, ext.registration_date FROM points_events as ext
-GROUP BY points, registration_date
-HAVING
-
-(
-    EXTRACT(DAY FROM
-        (ext.registration_date::date + (
-            SELECT expire_time
-            FROM expire_time_point
-            WHERE create_at = (SELECT MAX(create_at) FROM expire_time_point WHERE site_id = 1)
-        ) * INTERVAL '1 day') - CURRENT_DATE
-    )
-) = 1;
- */
