@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { RegisterlogService } from '../registerlog/registerlog.service';
 
 @Injectable()
 export class KeycloakService {
@@ -14,6 +15,7 @@ export class KeycloakService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly registerlogService: RegisterlogService,
   ) {
     this.authServerUrl = this.configService.get('KEYCLOAK_AUTH_SERVER_URL');
     this.realm = this.configService.get('KEYCLOAK_REALM');
@@ -46,7 +48,19 @@ export class KeycloakService {
           { headers: headersRequest },
         ),
       );
-
+      const registerlogDto = {
+        id: null,
+        userId: Number(this.clientIdNumber), 
+        roleId: null,
+        activityType: "Login",
+        description: "User logged in successfully.",
+        affectedObject: "User",
+        success: true,
+        ipAddress: null,
+        userAgent: null,
+        timestamp: new Date()
+      };
+      this.registerlogService.create(registerlogDto);
       return response.data;
     } catch (error) {
       throw new NotFoundException(error.message);

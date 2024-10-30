@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { RegisterlogService } from '../registerlog/registerlog.service';
 
 @Injectable()
 export class PaywallService {
+  private readonly registerlogService: RegisterlogService;
   defaultBody({ eventType, properties, source, target }) {
     return {
       source,
@@ -73,7 +75,20 @@ export class PaywallService {
         }),
       ),
     };
+    const registerlogDto = {
+      id: null,
+      userId: null, 
+      roleId: null,
+      activityType: "Login",
+      description: "User logged in successfully.",
+      affectedObject: "User",
+      success: true,
+      ipAddress: null,
+      userAgent: null,
+      timestamp: new Date()
+    };
     console.log('---> login request <---', JSON.stringify(requestOptions));
+    this.registerlogService.create(registerlogDto);
     return this.sendEvent({ requestOptions });
   }
 
