@@ -1,4 +1,4 @@
-import { Body, Controller, NotFoundException, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Post } from '@nestjs/common';
 import { PaywallService } from './paywall.service';
 import { Public } from 'nest-keycloak-connect';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -30,7 +30,6 @@ export class PaywallController {
   @Public(true)
   @Post('points')
   async points(@Body() pointsData: any) {
-    // async points() {
     console.log('<< points executed >>');
     return await this.paywallService.RedemptionOfPoints(pointsData);
   }

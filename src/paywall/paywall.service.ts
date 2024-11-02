@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RegisterlogService } from '../registerlog/registerlog.service';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class PaywallService {
@@ -102,17 +103,17 @@ export class PaywallService {
 
   async RedemptionOfPoints({ properties, source, target }) {
     const sessionId = Date.now();
+    const payload = this.payloadEventMapper({
+      eventType: 'LWPuntos',
+      properties,
+      source,
+      target,
+    })
+
     const requestOptions = {
       method: 'POST',
       headers: this.configuredHeadersCDP(),
-      body: JSON.stringify(
-        this.payloadEventMapper({
-          eventType: 'LWPuntos',
-          properties,
-          source,
-          target,
-        }),
-      ),
+      body: JSON.stringify(payload)
     };
     return this.sendEvent({ requestOptions, sessionId });
   }
