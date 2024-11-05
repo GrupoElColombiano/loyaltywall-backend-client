@@ -55,6 +55,27 @@ export class PaywallService {
   async Login({ properties, source, target }) {
     console.log("🚀 ~ PaywallService ~ Login ~ properties:", properties);
     const sessionId = Date.now();
+
+    function calculateAge(birthDate) {
+      const [day, month, year] = birthDate.split("/").map(Number);
+  
+      const birthDateObj = new Date(year, month - 1, day);
+
+      const currentDate = new Date();
+  
+      let age = currentDate.getFullYear() - birthDateObj.getFullYear();
+  
+      const currentMonth = currentDate.getMonth();
+      const currentDay = currentDate.getDate();
+      if (currentMonth < month - 1 || (currentMonth === month - 1 && currentDay < day)) {
+          age--;
+      }
+  
+      return age;
+  }
+  
+  // Example usage
+  console.log(calculateAge("03/02/1997")); // Prints the age based on the birth date
     const requestOptions = {
       method: 'POST',
       headers: this.configuredHeadersCDP(),
@@ -75,6 +96,8 @@ export class PaywallService {
             lastName: properties?.family_name || '',
             identificacion: properties?.documentNumber || '',
             celular: properties?.phone_number || '',
+            sexo: properties?.gender || '',
+            edad: calculateAge(properties?.birthdate) || '',
           }
         },
         }),
