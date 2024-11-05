@@ -12,6 +12,7 @@ import { PaymentTransactions } from 'src/common/entity/payment-transactions.enti
 import { Plan } from 'src/common/entity/plans.entity';
 import { UserPoints } from 'src/common/entity/user-points.entity';
 import { UserPlan } from 'src/common/entity/user_plan.entity';
+import { RegisterLog } from 'src/registerlog/entity/register-log.entity';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { UserPlan } from 'src/common/entity/user_plan.entity';
       Cluster,
       Plan,
       UserPlan,
+      RegisterLog
       // PlansProductCategory,
     ]),
     HttpModule
