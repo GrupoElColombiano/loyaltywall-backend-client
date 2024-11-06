@@ -1,6 +1,6 @@
 // src/payment/payment.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import axios from 'axios';
 import * as CryptoJS from 'crypto-js';
 import * as paypal from '@paypal/checkout-server-sdk';
@@ -62,63 +62,13 @@ export class PaymentService {
    
      const saveMainTransactionWithPoints = await this.paymentTransactionRepository.save(paymentGateway);
 
-    let id_user_details_payment = null;
-      if (paymentGateway.products) {
-        const userDetail = new UserDetailsPayment();
-        userDetail.first_name = paymentGateway?.data?.names;
-        userDetail.last_name = paymentGateway?.data?.lastName;
-        userDetail.email = paymentGateway?.data?.email;
-        userDetail.phone = paymentGateway?.data?.phone;
-        userDetail.cedula = paymentGateway?.data?.cedula;
-        userDetail.typo_de_documento = paymentGateway?.data?.typo_de_documento;
-        userDetail.address = paymentGateway?.data?.address;
-        userDetail.address_reference = paymentGateway?.data?.referenceAddress;
-        userDetail.region = paymentGateway?.data?.region;
-        userDetail.city = paymentGateway?.data?.city;
-        userDetail.postal_code = paymentGateway?.data?.zipCode;
-        const user_details_payment =
-          await this.userDetailsPaymentRepository.save(userDetail);
-          id_user_details_payment = user_details_payment.id;
-      }
-
-
-       //Guardar en la tabla subscriptions
-      const subscription = new Subscription();
-      subscription.id_plan = paymentGateway.id_plan || null;
-      subscription.id_rate = paymentGateway.id_rate || null;
-      subscription.transacction = paymentGateway.transacction || null;
-      subscription.sysdate = new Date();
-      subscription.id_version = paymentGateway.id_version || null;
-      subscription.id_user = paymentGateway?.data?.id_user;
-      subscription.cancellation_status = 4;
-      subscription.transaction_type = paymentGateway?.data?.products ? 'product' : 'plan';
-      subscription.amount = paymentGateway?.amount;
-      subscription.payment_gateway_id = 2;
-      subscription.user_details_payment_id = id_user_details_payment;
-      subscription.id_order = paymentGateway?.data?.order_id;
-      subscription.id_site = paymentGateway.id_site || 1;
-      const subscriptionSaved = await this.subscriptionRepository.save(
-        subscription,
-      );
-      console.log('-- subscriptionSaved --', JSON.stringify(subscriptionSaved));
-      const userPlan = new UserPlan();
-      userPlan.idUser = paymentGateway?.data?.id_user;
-      userPlan.isActive = false;
-      userPlan.dateExpiredPlan = new Date(
-        new Date().setDate(new Date().getDate() + 30),
-      );
-      userPlan.dateInitPlan = new Date();
-      userPlan.idVersion = paymentGateway?.data?.id_version || null;
-      await this.userPlanRepository.save(userPlan);
-
-
-       //guardar en la tabla marketplace_products el array de productos
        if (paymentGateway?.data?.products) {
-        console.log('Productos', paymentGateway?.data?.products);
+
+        try {
+
         paymentGateway?.data?.products.forEach(async (product) => {
           const marketplaceProduct = new MarketplaceProduct();
-          marketplaceProduct.id_transaction =
-            subscription?.id_transaction || '';
+          marketplaceProduct.id_transaction = '';
           marketplaceProduct.id_product = product.id;
           marketplaceProduct.name_product = product.name;
           marketplaceProduct.price = product.price;
@@ -129,12 +79,17 @@ export class PaymentService {
           marketplaceProduct.image = product.image;
           await this.marketplaceProductRepository.save(marketplaceProduct);
         });
+
+
+        } catch(error) {
+          throw new InternalServerErrorException('Error saving product Data');
+        }
+
+
       }
 
       return {
         transaction:saveMainTransactionWithPoints.id,
-        id_subscription:subscription?.id_subscription,
-        userPlanId:userPlan?.id,
         status:"created"
       }
 
