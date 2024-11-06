@@ -2,17 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-// import * as dotenv from 'dotenv';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
-  // app.enableCors({
-  //   origin: '*',
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  //   preflightContinue: false,
-  //   optionsSuccessStatus: 204,
-  // });
-  // dotenv.config();
+
+  app.enableCors({
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: '*',
+  })
 
   const options = new DocumentBuilder()
     .setTitle(`REST-API Gamificación.`)

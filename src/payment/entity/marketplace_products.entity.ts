@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Generated,
 } from 'typeorm';
 import { Subscription } from './subscriptionsentity.entity';
 
@@ -16,7 +17,8 @@ export class MarketplaceProduct {
   @JoinColumn({ name: 'id_transaction', referencedColumnName: 'id_transaction' })
   subscription: Subscription;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', unique: true })
+  @Generated('uuid')
   id_transaction: string;
 
   @Column()
