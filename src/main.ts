@@ -5,7 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { cors: false });
 
   app.enableCors({
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -28,7 +28,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(80); // TODO-stabilization_of_environments -> port in Production
-  // await app.listen(3000);// TODO-stabilization_of_environments -> port in Development
+  // await app.listen(80); // TODO-stabilization_of_environments -> port in Production
+  await app.listen(3000);// TODO-stabilization_of_environments -> port in Development
 }
 bootstrap();

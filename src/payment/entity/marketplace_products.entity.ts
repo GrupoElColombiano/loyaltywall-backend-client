@@ -3,10 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  JoinColumn,
-  Generated,
+  JoinColumn
 } from 'typeorm';
 import { Subscription } from './subscriptionsentity.entity';
+
 
 @Entity({ name: 'marketplace_products' })
 export class MarketplaceProduct {
@@ -17,8 +17,7 @@ export class MarketplaceProduct {
   @JoinColumn({ name: 'id_transaction', referencedColumnName: 'id_transaction' })
   subscription: Subscription;
 
-  @Column({ type: 'uuid', unique: true })
-  @Generated('uuid')
+  @Column({ type: 'uuid' })
   id_transaction: string;
 
   @Column()

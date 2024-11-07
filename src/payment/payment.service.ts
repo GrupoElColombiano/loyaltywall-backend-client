@@ -13,6 +13,7 @@ import { MarketplaceProduct } from './entity/marketplace_products.entity';
 import { PaymentGateway } from './entity/payment.entity.entity';
 import { UserPlan } from 'src/common/entity/user_plan.entity';
 import { PaymentTransaction } from './entity/payment-transactions.entity';
+import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class PaymentService {
   private readonly apiUrlLocations =
@@ -59,16 +60,18 @@ export class PaymentService {
 
   async createTransactionWithPoints(paymentGateway:any) {
 
-   
+      //todo: create a table to manage transactions with points
      const saveMainTransactionWithPoints = await this.paymentTransactionRepository.save(paymentGateway);
 
        if (paymentGateway?.data?.products) {
 
         try {
 
+        //todo: manage just one uuidv4() id_transaction for all products
+
         paymentGateway?.data?.products.forEach(async (product) => {
           const marketplaceProduct = new MarketplaceProduct();
-          marketplaceProduct.id_transaction = '';
+          marketplaceProduct.id_transaction = uuidv4();
           marketplaceProduct.id_product = product.id;
           marketplaceProduct.name_product = product.name;
           marketplaceProduct.price = product.price;
