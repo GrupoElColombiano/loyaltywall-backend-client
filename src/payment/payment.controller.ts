@@ -149,4 +149,24 @@ export class PaymentController {
   async getCitiesByDepartmentId(@Param('id') id: number) {
     return await this.paymentService.getCitiesByDepartmentId(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('addPointRedemption')
+  async addPointRedemption(@Body() body: any) {
+    console.log(":::::: addPointRedemption ::::::::");
+    return await this.paymentService.addPointRedemption(body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('getPointRedemption/:userId/:siteId')
+  async listOfPointsRedeemedByUserAndSite(
+    @Param('userId') userId: string,
+    @Param('siteId') siteId: string
+  ) {
+    console.log(":::::: addPointRedemption ::::::::");
+
+    return await this.paymentService.listOfPointsRedeemedByUserAndSite({ userId, siteId });
+  }
+  //listOfPointsRedeemedByUserAndSite
+
 }

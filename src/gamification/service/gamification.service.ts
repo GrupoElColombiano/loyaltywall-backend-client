@@ -4,7 +4,7 @@ import { Event } from 'src/common/entity/event.entity';
 import { Site } from 'src/common/entity/site.entity';
 
 import { PointsEvents } from 'src/common/entity/points-events.entity';
-import { EntityManager, EntityRepository, Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { EventsPointsSite } from 'src/common/entity/events-points-site.entity';
 import { PaymentTransactions } from 'src/common/entity/payment-transactions.entity';
 import { UserPoints } from 'src/common/entity/user-points.entity';

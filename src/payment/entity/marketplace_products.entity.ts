@@ -17,7 +17,8 @@ export class MarketplaceProduct {
   @JoinColumn({ name: 'id_transaction', referencedColumnName: 'id_transaction' })
   subscription: Subscription;
 
-  @Column({ type: 'uuid' })
+  // @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: false })
   id_transaction: string;
 
   @Column()

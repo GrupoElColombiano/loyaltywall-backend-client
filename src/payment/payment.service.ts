@@ -6,7 +6,7 @@ import * as CryptoJS from 'crypto-js';
 import * as paypal from '@paypal/checkout-server-sdk';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Subscription } from './entity/subscriptionsentity.entity';
-import { Repository } from 'typeorm';
+import { getManager, Repository } from 'typeorm';
 import { Plan } from 'src/common/entity/plans.entity';
 import { UserDetailsPayment } from './entity/user-details-payment.entity';
 import { MarketplaceProduct } from './entity/marketplace_products.entity';
@@ -14,6 +14,8 @@ import { PaymentGateway } from './entity/payment.entity.entity';
 import { UserPlan } from 'src/common/entity/user_plan.entity';
 import { PaymentTransaction } from './entity/payment-transactions.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { PointsRedeemed } from './entity/points_redeemed.entity';
+
 @Injectable()
 export class PaymentService {
   private readonly apiUrlLocations =
@@ -44,6 +46,8 @@ export class PaymentService {
     private readonly userPlanRepository: Repository<UserPlan>,
     @InjectRepository(PaymentTransaction)
     private readonly paymentTransactionRepository: Repository<PaymentTransaction>,
+    @InjectRepository(PointsRedeemed)
+    private readonly pointsRedeemed: Repository<PointsRedeemed>
   ) {}
 
   configurePaypalClient({ clientId, clientSecret }) {
@@ -70,17 +74,22 @@ export class PaymentService {
         //todo: manage just one uuidv4() id_transaction for all products
 
         paymentGateway?.data?.products.forEach(async (product) => {
-          const marketplaceProduct = new MarketplaceProduct();
-          marketplaceProduct.id_transaction = uuidv4();
-          marketplaceProduct.id_product = product.id;
-          marketplaceProduct.name_product = product.name;
-          marketplaceProduct.price = product.price;
-          marketplaceProduct.quantity = product.quantity;
-          marketplaceProduct.points = product.points;
-          marketplaceProduct.is_paid_with_points = product.isPaidWithPoints;
-          marketplaceProduct.description = product.description;
-          marketplaceProduct.image = product.image;
-          await this.marketplaceProductRepository.save(marketplaceProduct);
+          try {
+            const marketplaceProduct = new MarketplaceProduct();
+            marketplaceProduct.id_transaction = uuidv4();
+            marketplaceProduct.id_product = product.id;
+            marketplaceProduct.name_product = product.name;
+            marketplaceProduct.price = product.price;
+            marketplaceProduct.quantity = product.quantity;
+            marketplaceProduct.points = product.points;
+            marketplaceProduct.is_paid_with_points = product.isPaidWithPoints;
+            marketplaceProduct.description = product.description;
+            marketplaceProduct.image = product.image;
+            await this.marketplaceProductRepository.save(marketplaceProduct);
+          } catch (error) {
+            console.log('::: error - 90 :::', error);
+          }
+          
         });
 
 
@@ -816,5 +825,74 @@ export class PaymentService {
       console.error(error);
       throw error;
     }
+  }
+
+  async addPointRedemption(body: any) {
+    console.log("::: body :::", body);
+    const { userId, siteId, products } = body;
+
+    if (userId && siteId && products?.length > 0) {
+      const newRedemption = new PointsRedeemed();
+
+      newRedemption.id = uuidv4();
+      newRedemption.userId = userId;
+      newRedemption.siteId = siteId;
+      newRedemption.createdAt = new Date().toISOString();
+
+      try {
+        for (const product of products) {
+          newRedemption.productId = product.id;
+          newRedemption.productName = product.name;
+          // newRedemption.createdAt = new Date().toISOString();
+          newRedemption.pointsRedeemed = product.points;
+          console.log({ newRedemption })
+          const response = await this.pointsRedeemed.save(newRedemption);
+          console.log('-- 849 --', {response});
+        }
+
+      } catch (error) {
+        console.error('::: Error - 852 :::', error);
+      }
+    } else {
+      throw new InternalServerErrorException('Not found some fields in Redemption');
+    }
+
+  }
+
+  async listOfPointsRedeemedByUserAndSite({ userId, siteId }) {
+
+    if (userId && siteId) {
+      const newRedemption = new PointsRedeemed();
+
+      newRedemption.id = uuidv4();
+      newRedemption.userId = userId;
+      newRedemption.siteId = siteId;
+      newRedemption.createdAt = new Date().toISOString();
+
+      try {
+        const response = await this.pointsRedeemed.find({
+          where: {
+            userId,
+            siteId
+          }
+        });
+        const mapper = response.map(record => {
+
+          return {
+            registration_date: record.createdAt,
+            points: record.pointsRedeemed,
+            productName: record.productName
+          }
+        })
+        console.log("🚀 ~ PaymentService ~ listOfPointsRedeemedByUserAndSite ~ response:", response)
+
+        return mapper;
+      } catch (error) {
+        console.error('::: Error - 852 :::', error);
+      }
+    } else {
+      throw new InternalServerErrorException('Not found some fields in Redemption');
+    }
+
   }
 }

@@ -11,9 +11,10 @@ import { PlansProductCategory } from 'src/common/entity/plansproductcategory.ent
 import { UserDetailsPayment } from './entity/user-details-payment.entity';
 import { MarketplaceProduct } from './entity/marketplace_products.entity';
 import { UserPlan } from 'src/common/entity/user_plan.entity';
+import { PointsRedeemed } from 'src/payment/entity/points_redeemed.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PaymentGateway, PaymentTransaction, Subscription, Plan, PlansProductCategory, UserDetailsPayment, MarketplaceProduct, UserPlan]), HttpModule],
+  imports: [TypeOrmModule.forFeature([PaymentGateway, PaymentTransaction, Subscription, Plan, PlansProductCategory, UserDetailsPayment, MarketplaceProduct, UserPlan, PointsRedeemed]), HttpModule],
   providers: [PaymentService],
   controllers: [PaymentController],
   exports: [PaymentService],
