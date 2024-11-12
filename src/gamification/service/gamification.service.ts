@@ -86,17 +86,23 @@ export class GamificationService {
         WHERE a."userId" = $1
       `;
 
-      const paymentTransactionsQuery = `
-        SELECT a.points as points, a.product as event, TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date, 0 as "dataType"
-        FROM user_points a
-        WHERE a."idkeycloak" = $1
+      const pointsRedeemedQuery = `
+        SELECT b."pointsRedeemed" as points, b."productName" as event,TO_CHAR(
+            TO_TIMESTAMP(
+                LEFT(b."createdAt", 19), 
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ), 
+            'DD/MM/YYYY'
+        ) as registration_date, 0 as "dataType"
+        FROM points_redeemed b
+        WHERE b."userId" = $1
       `;
 
       const combinedQuery = `
         (${pointsEventsQuery})
         UNION ALL
-        (${paymentTransactionsQuery})
-        ORDER BY registration_date DESC
+        (${pointsRedeemedQuery})
+        ORDER BY registration_date ASC
         OFFSET $2
         LIMIT $3
       `;
@@ -112,19 +118,17 @@ export class GamificationService {
       SELECT COUNT(*) as total FROM (
         (${pointsEventsQuery})
         UNION ALL
-        (${paymentTransactionsQuery})
+        (${pointsRedeemedQuery})
       ) as combined_results
     `;
-    const countResult = await this.entityManager.query(countQuery, [userId]);
+      const countResult = await this.entityManager.query(countQuery, [userId]);
 
-    totalItems = parseInt(countResult[0].total, 10);
+      totalItems = parseInt(countResult[0].total, 10);
 
-
-    return {
-      totalItems,
-      items: result,
-    }
-
+      return {
+        totalItems,
+        items: result,
+      }
      
     } else if (type == 1) {
       queryBuilder = this.entityManager
