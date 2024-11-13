@@ -18,6 +18,7 @@ import { Paywall, PaywallDocument } from '../entities/paywall.schema';
 import { Plan, PlanDocument } from '../entities/plan.schema';
 import { PlansProductCategory } from 'src/common/entity/plansproductcategory.entity';
 import { PaymentService } from 'src/payment/payment.service';
+
 // import
 
 @Injectable()
@@ -165,72 +166,48 @@ export class GamificationService {
 
 
     } else {
-      //TODO: this query might change looking for data in another table
-      // queryBuilder = this.entityManager
-      //   .createQueryBuilder()
-      //   // .select([
-      //   //   'a.points as points',
-      //   //   'a.product as event',
-      //   //   `TO_CHAR(a."system_date", 'DD/MM/YYYY') as registration_date`,
-      //   //   '0 as "dataType"',
-      //   // ])
-        
-      //   // .from(UserPoints, 'a')
-      //   // .where('a.idkeycloak = :userId', { userId });
-        
-      //     .from(PaymentTransactions, 'a')
-      //     .where('a.userId = :userId', { userId });
-        
-      //   // .where('payment_transaction.userId = :idKeycloak', {
-      //   //   idKeycloak: userId,
-      //   // })
-        
-      // result = await queryBuilder.getRawMany();
+      const pointsRedeemedQuery = `
+        SELECT b."pointsRedeemed" as points, b."productName" as event,TO_CHAR(
+            TO_TIMESTAMP(
+                LEFT(b."createdAt", 19), 
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ), 
+            'DD/MM/YYYY'
+        ) as registration_date, 0 as "dataType"
+        FROM points_redeemed b
+        WHERE b."userId" = $1
+        AND b."siteId" = $4
+        ORDER BY registration_date ASC
+      `;
 
-      //         // Clone the query builder for counting total items
-      //   const countQueryBuilder = queryBuilder.clone();
-      //   countQueryBuilder.select('COUNT(*)', 'totalItems').offset(offset).limit(pageSize);
+    const combinedQuery = `
+        (${pointsRedeemedQuery})
+        OFFSET $2
+        LIMIT $3
+      `;
 
-      //   // Execute the count query to get the total number of items
-      //   const totalItemsResult = await countQueryBuilder.getRawOne();
-      //   const totalItems = parseInt(totalItemsResult.totalItems, 10);
+      result = await this.entityManager.query(combinedQuery, [
+        userId,
+        0,
+        100,
+        idSite
+      ]);
 
-      //   return {
-      //     items: result,
-      //     totalItems,
-      //   };
+      console.log("📉📈📉📈📉📈📉📈📉📈📉📈📉📈")
+      console.log(JSON.stringify(result));
 
-      queryBuilder = this.entityManager
-      .createQueryBuilder()
-      .select([
-        'a.points as points',
-        'b.name as event',
-        `TO_CHAR(a.registration_date, 'DD/MM/YYYY') as registration_date`,
-        '1 as dataType',
+      const total = await this.entityManager.query(`
+        SELECT COUNT(*) AS totalItems
+        FROM points_redeemed
+        WHERE "userId" = $1
+        AND "siteId" = $2;`, [
+        userId,
+        idSite
       ])
-      .from(PointsEvents, 'a')
-      .innerJoin(Event, 'b', 'b.id_event = a."eventIdEvent"')
-      .innerJoin(EventsPointsSite, 'c', 'c.eventIdEvent = a."eventIdEvent"')
-      .innerJoin(Site, 'd', 'd.idSite = a."siteIdSite"')
-      .where('a.userId = :userId', { userId }) // Agrega la condición userId aquí
-      .offset(offset)
-      .limit(pageSize);
-
-    result = await queryBuilder.getRawMany();
-
-    // Clone the query builder to get total count without offset and limit
-    const countQueryBuilder = queryBuilder.clone();
-    countQueryBuilder.select('COUNT(*)', 'totalItems').offset(offset).limit(pageSize);
-
-    // Execute the count query to get the total number of items
-    const totalItemsResult = await countQueryBuilder.getRawOne();
-    const totalItems = parseInt(totalItemsResult.totalItems, 10);
-
-
-    return {
-      items:result,
-      totalItems
-    }
+      return {
+        items: result,
+        totalItems: total[0]?.totalitems
+      }
     }
   }
 
